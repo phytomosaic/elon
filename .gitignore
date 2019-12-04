@@ -2,3 +2,6 @@
 .Rhistory
 .RData
 .Ruserdata
+__makefiles/**
+# ignore all directories with underscore prefix:
+_*
