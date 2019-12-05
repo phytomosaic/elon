@@ -3,6 +3,5 @@
 .RData
 .Ruserdata
 .Rbuildignore
-__makefiles/**
-# ignore all directories with underscore prefix:
+#  __makefiles/**
 _*
