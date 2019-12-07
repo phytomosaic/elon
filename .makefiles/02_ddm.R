@@ -6,6 +6,10 @@
 #    see: https://cmerow.github.io/RDataScience/21_Intro_IPMs.html
 ###################################################################
 
+### TODO: use mixed models (random effect = quadrat = unique popn)
+### TODO: permit predictor interactions (x1 * x2 * x3 * ...)
+
+
 ### preamble
 rm(list=ls())
 require(ecole)
