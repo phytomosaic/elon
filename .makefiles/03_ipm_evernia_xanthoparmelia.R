@@ -104,6 +104,10 @@ table(d$temp)
 table(d$encl)
 # xtabs(~ genet+yr, data=d)
 
+# ### log10 transform?
+# d$size     <- log10(d$size)
+# d$sizenext <- log10(d$sizenext)
+
 ### data exploration plots
 set_par(3)
 plot(d$size,d$sizenext,main='Growth/Shrinkage/Stasis',
@@ -149,7 +153,7 @@ for (u in 1:length(u_temp)) {
   lines(xx, predict(growth_reg, data.frame(size=xx,temp=u_temp[u])),
         col=cu[u], lwd=3)
 }
-abline(0,1, col='grey70')
+abline(0,1, col='red')
 plot(d$size, jitter(d$surv), main='Survival', col='#000000')
 lines(xx,predict(surv_reg,data.frame(size=xx),type='response'),
       col=2,lwd=3)
@@ -242,7 +246,7 @@ res <- list(lam = lam,
                     message(paste("error-cell number",ii))
                     return(NA)})
   image(y,y,t(K),main=paste0('T = ',round(temp, 2)), col=cc,
-        xlab=xl, ylab=yl)
+        xlab='Size (t)', ylab='Size (t+1)')
   contour(y,y,t(K), add=T, drawlabels=F) ; abline(0,1,lwd=2)
   ij <- which(t(K) == max(t(K)), arr.ind = TRUE)
   points(y[ij[1]], y[ij[2]], col=2, pch=16, cex=1)
