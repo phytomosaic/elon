@@ -256,10 +256,79 @@ xval   <- data.frame(temp=u_temp)
 set_par(NROW(xval))
 sapply(1:NROW(xval), plot_k)
 
+### get bootstrapped lambda
+`boot_lambda` <- function(d, nboot = 100) {
+  ### unique temperature values (calc lamda for each one)
+  xval   <- data.frame(temp=sort(unique(d$temp)))
+  ### collector for lambda
+  res <- matrix(NA, nrow=nboot, ncol=dim(xval)[[1]],
+                dimnames=list(NULL,
+                              paste0('T_',round(xval$temp,2))))
+  ### vital rate functions
+  s_x <- function(x, params) { # 1. probability of surviving
+    u <- exp(params$surv_int +
+               params$surv_slope * x)
+    return(u / (1 + u))
+  }
+  g_yx <- function(y, x, reg, temp) { # 2. growth function - GAM
+    p   <- mgcv:::predict.gam(reg,
+                              data.frame(size = x,
+                                         temp = temp), se.fit=T)
+    mu  <- p$fit
+    sig <- p$se.fit * 44
+    dnorm(y, mean = mu, sd= abs(sig))
+  }
+  ### kernel matrix setup
+  minsz <- 0.9 * min(c(d$size,d$sizenext),na.rm=T) # expand ranges
+  maxsz <- 1.1 * max(c(d$size,d$sizenext),na.rm=T)
+  n <- 100                  # number of cells in the discretized kernel
+  b <- minsz+c(0:n)*(maxsz-minsz)/n    # boundary points b = cell edges
+  y <- 0.5*(b[1:n]+b[2:(n+1)])         # mesh points y = cell midpoints
+  h <- y[2]-y[1]                       # step size h = cell width
+  ### iteration
+  for (b in 1:nboot) {
+    ### sample the data
+    cat('boot', b, 'of', nboot, '\n')
+    ii <- sample(1:nrow(d), size = dim(d)[1], replace = TRUE)
+    boot_dat <- d[ii, ]
+    ### fit the vital rate functions
+    params <- data.frame(
+      surv_int=NA,
+      surv_slope=NA,
+      recruitareamean=NA,
+      recruitareasd=NA)
+    surv_reg <- glm(surv ~ size, data=boot_dat,
+                    family=binomial(link='logit'))
+    params$surv_int        <- coefficients(surv_reg)[1]
+    params$surv_slope      <- coefficients(surv_reg)[2]
+    growth_reg <- mgcv::gam(sizenext ~ te(size,temp,bs='tp',m=2),
+                            data=boot_dat, family='gaussian')
+    params$recruitareamean <-
+      mean(boot_dat$sizenext[!is.na(boot_dat$size)], na.rm=T)
+    params$recruitareasd   <-
+      sd(boot_dat$sizenext[!is.na(boot_dat$size)], na.rm=T)
+    ### kernel for each TEMPERATURE value
+    `get_lam` <- function(ri) {
+      temp <- xval[ri,'temp']
+      G <- h*outer(y,y,g_yx,reg=growth_reg,temp) # growth kernel
+      S <- s_x(y,params=params) # survival kernel
+      P <- G 				 # initialize growth/survival
+      for(i in 1:n) P[,i] <- G[,i]*S[i] # growth/surv kernel
+      K  <- P 	                       # complete FULL kernel
+      lam <- tryCatch({Re(eigen(K)$values[1])},                               error=function(cond) {
+        message(paste("error in",ri))
+        return(NA)})
+      lam
+    }
+    res[b,] <- sapply(1:NROW(xval), get_lam)
+  }
+  return(res)
+}
+b <- boot_lambda(d, nboot = 100) # about 2 sec each...
+ecole::plot_joy(b,fcol=colvec(sort(unique(d$temp))),yexp=1.0)
+sapply(data.frame(b), function(x) quantile(x, c(0.025,0.975)))
+
 ### TODO: consider EACH yearly census, and yearly climate
-
-
-
 
 
 
